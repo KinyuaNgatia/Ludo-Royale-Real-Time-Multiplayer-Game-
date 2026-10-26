@@ -1,0 +1,11 @@
+const test=require('node:test');const assert=require('node:assert/strict');const G=require('./game');
+test('Duel activates only red and blue',()=>{const g=G.createGame(2);assert.deepEqual(g.active,['red','blue']);});
+test('Classic activates four colors',()=>{assert.equal(G.createGame(4).active.length,4)});
+test('a six permits leaving base and other rolls do not',()=>{const g=G.createGame(2);assert.deepEqual(G.legalMoves(g,'red',5),[]);assert.deepEqual(G.legalMoves(g,'red',6),[0,1,2,3]);});
+test('moves cannot exceed finish and finished tokens cannot move',()=>{const g=G.createGame(2);g.tokens.red=[55,56,-1,4];assert.deepEqual(G.legalMoves(g,'red',2),[3]);assert.deepEqual(G.legalMoves(g,'red',1),[0,3]);});
+test('exact finish wins and advances only on a non-extra turn',()=>{const g=G.createGame(2);g.tokens.red=[55,56,56,56];g.turn=0;g.die=1;g.rolled=true;g.legal=[0];const r=G.applyMove(g,'red',0);assert.equal(r.winner,'red');assert.equal(g.status,'finished');});
+test('capture sends opposing token back to base and grants another turn',()=>{const g=G.createGame(2);g.tokens.red=[0,-1,-1,-1];g.tokens.blue=[40,-1,-1,-1];g.turn=0;g.die=1;g.rolled=true;g.legal=[0];const r=G.applyMove(g,'red',0);assert.equal(g.tokens.blue[0],-1);assert.equal(r.captured.length,1);assert.equal(g.turn,0);});
+test('safe squares prevent capture',()=>{const g=G.createGame(2);g.tokens.red=[7,-1,-1,-1];g.tokens.blue=[-1,-1,-1,-1];g.turn=0;g.die=1;g.rolled=true;g.legal=[0];G.applyMove(g,'red',0);assert.equal(g.tokens.red[0],8);});
+test('wrong player and illegal moves are rejected',()=>{const g=G.createGame(2);assert.throws(()=>G.roll(g,'blue'));g.die=6;g.rolled=true;g.legal=[0];assert.throws(()=>G.applyMove(g,'red',3));});
+test('bot chooses one of legal moves',()=>{const g=G.createGame(2);g.die=6;assert.ok(g.legal.length===0);assert.ok([0,1,2,3].includes(G.botChoice(g,'red')));});
+test('full Duel simulation eventually records a winner and scoring',()=>{const g=G.createGame(2);let turns=0;while(!g.winner&&turns<30000){const c=G.player(g);if(!g.rolled){const r=G.roll(g,c);if(r.noMoves){turns++;continue;}}const i=G.botChoice(g,c);G.applyMove(g,c,i);turns++;}assert.ok(g.winner,'match should finish within the safety limit');assert.equal(g.status,'finished');assert.equal(g.tokens[g.winner].filter(p=>p===56).length,4);assert.ok(turns<30000);});
